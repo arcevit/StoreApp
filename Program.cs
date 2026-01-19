@@ -9,9 +9,19 @@ using StoreApp.Profiles;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Get port from environment variable or use default
+var port = Environment.GetEnvironmentVariable("APP_PORT") ?? "8080";
+
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer((document, context, cancellationToken) =>
+    {
+        document.Servers = [new() { Url = $"http://localhost:{port}" }];
+        return Task.CompletedTask;
+    });
+});
 
 
 builder.Services.AddAutoMapper(config =>
@@ -53,8 +63,13 @@ if (app.Environment.IsDevelopment())
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-    app.MapScalarApiReference();
+    app.MapScalarApiReference(options =>
+    {
+        options.WithDefaultHttpClient(ScalarTarget.JavaScript, ScalarClient.HttpClient);
+    });
 }
+
+app.UseForwardedHeaders();
 
 app.Map("/", () => Results.Redirect("/scalar/v1"));
 
